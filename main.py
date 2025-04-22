@@ -18,14 +18,12 @@ first_primes_list = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
 
 ''' Functions used in Prime Generation'''
 
+# returns random number between 2**(n-1)+1 and 2**n-1
 def rBitRandom(r):
-    # returns random number 
-    # between 2**(n-1)+1 and 2**n-1
     return(random.randrange(2**(r-1)+1, 2**r-1))
 
+# Generate a prime candidate divisible by first primes
 def getLowLevelPrime(r):
-    # Generate a prime candidate
-    # divisible by first primes
     while True:
         # obtain a random number
         pc = rBitRandom(r)
@@ -37,29 +35,25 @@ def getLowLevelPrime(r):
         else: 
             return pc
         
-def isMillerRabinPassed(mrc):
-    maxDivisionsByTwo = 0
-    ec = mrc-1
+def isMillerRabinPassed(mrc, trials=20):
+    ec = mrc - 1
+    s = 0
 
     while ec % 2 == 0:
-        ec >>= 1
-        maxDivisionsByTwo += 1
-    assert(2**maxDivisionsByTwo * ec == mrc-1)
+        ec //= 2
+        s += 1
 
-    def trialComposite(round_tester):
-        if pow(round_tester, ec, mrc) == 1:
-            return False
-        for i in range(maxDivisionsByTwo):
-            if pow(round_tester, 2**i * ec, mrc) == mrc-1:
-                return False
-        return True
-    
-    # set number of trials here
-    numberOfRabinTrials = 20
+    for _ in range(trials):
+        a = random.randrange(2, mrc - 1)
+        x = pow(a, ec, mrc)
 
-    for i in range(numberOfRabinTrials):
-        round_tester = random.randrange(2, mrc)
-        if trialComposite(round_tester):
+        if x == 1 or x == mrc - 1:
+            continue
+        for _ in range(s - 1):
+            x = pow(x, 2, mrc)
+            if x == mrc - 1:
+                break
+        else:
             return False
     return True
 
@@ -75,6 +69,7 @@ def generatePrimes():
 
 ''' Mathematical Functions '''
 
+# Power Function
 def power(base, expo, m):
     res = 1
     base = base % m
@@ -142,6 +137,8 @@ def generateKeys():
     d = modInverse(e, phi)    
 
     return e, d, n
+
+''' Padding Functions '''
 
 if __name__ == '__main__':
     e, d, n = generateKeys()
