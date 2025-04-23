@@ -2,8 +2,8 @@
     # from Crypto.Util import number
     # number.getPrime(n)
 
-# used for large prime generation
-import random
+import random # used for large prime generation
+import argparse # used for command line interfacing
 
 # Pre generated primes
 first_primes_list = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
@@ -16,7 +16,34 @@ first_primes_list = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
                      263, 269, 271, 277, 281, 283, 293,
                      307, 311, 313, 317, 331, 337, 347, 349]
 
-''' Functions used in Prime Generation'''
+''' Command Line Arguments + Parsing Functions '''
+
+# command line arguments + parsing
+def parse_cli_args():
+    parser = argparse.ArgumentParser(description="Simple RSA Encryptor / Decryptor")
+    group = parser.add_mutually_exclusive_group(required=True)
+
+    group.add_argument('--encrypt', '--e', action='store_true', help='Encrypt the file')
+    group.add_argument('--decrypt', '--d', action='store_true', help='Decrypt the file')
+
+    group.add_argument('--infile', '--in', '--i',type=str, required=True, help='Input file path')
+    group.add_argument('--outfile', '--out', '--o', type=str, required=True, help='Output file path')
+
+    ar gs = parser.parse_args()
+
+'''File I/O Helper Functions'''
+
+# file reading
+def read_file(filepath):
+    with open(filepath, 'rb') as f:
+        return f.read()
+    
+# file writing
+def write_file(filepath, data):
+    with open(filepath, 'wb') as f:
+        f.write(data)
+
+''' Prime Generation Functions '''
 
 # returns random number between 2**(n-1)+1 and 2**n-1
 def rBitRandom(r):
@@ -35,6 +62,7 @@ def getLowLevelPrime(r):
         else: 
             return pc
         
+# Miller Rabin Prime Test
 def isMillerRabinPassed(mrc, trials=20):
     ec = mrc - 1
     s = 0
@@ -114,7 +142,8 @@ def decrypt(c, d, n):
 
 ''' Key Generation '''
 
-def generateKeys():
+def generateKeys(keysize = 2048):
+    half = keysize // 2
     while True:
         p = generatePrimes()
         q = generatePrimes()
@@ -140,8 +169,21 @@ def generateKeys():
 
 ''' Padding Functions '''
 
+def pad_message(msg):
+    return f":::{msg}:::"
+
+def unpad_message(padded):
+    return padded.replace(":::", "")
+
+''' Main Process '''
+
 if __name__ == '__main__':
-    e, d, n = generateKeys()
+
+#####################################
+######### add lines for cli parsing + below that
+#####################################
+
+    e, d, n = generateKeys(2048)
 
     print(f"Public Key (e, n): ({e}, {n})")
     print(f"Private Key (d, n): ({d}, {n})")
@@ -150,6 +192,7 @@ if __name__ == '__main__':
     M = "This is a message"
     print(f"Original Message: {M}")
 
+    padded = pad_message(M)
     m_int = int.from_bytes(M.encode(), 'big')
 
     # Check message size is within bounds
@@ -167,4 +210,4 @@ if __name__ == '__main__':
     decrypted_bytes = decrypted_int.to_bytes((decrypted_int.bit_length() + 7) // 8, 'big')
     decrypted_message = decrypted_bytes.decode()
 
-    print(f"Decrypted Message: {decrypted_message}")
+    print(f"Decrypted Message: {unpad_message(decrypted_message)}")
