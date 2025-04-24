@@ -2,6 +2,11 @@
     # from Crypto.Util import number
     # number.getPrime(n)
 
+'''
+
+
+'''
+
 import random # used for large prime generation
 import argparse # used for command line interfacing
 
@@ -16,6 +21,21 @@ first_primes_list = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
                      263, 269, 271, 277, 281, 283, 293,
                      307, 311, 313, 317, 331, 337, 347, 349]
 
+''' Key Persistence Functions '''
+
+def save_keys(e, d, n, filepath='rsa_keys.txt'):
+    with open(filepath, 'w') as f:
+        f.write(f"{e}\n{d}\n{n}")
+
+def load_keys(filepath='rsa_keys.txt'):
+    with open(filepath, 'r') as f:
+        lines = f.read().splitlines()
+        e = int(lines[0])
+        d = int(lines[1])
+        n = int(lines[2])
+
+    return e, d, n
+
 ''' Command Line Arguments + Parsing Functions '''
 
 # command line arguments + parsing
@@ -23,13 +43,17 @@ def parse_cli_args():
     parser = argparse.ArgumentParser(description="Simple RSA Encryptor / Decryptor")
     group = parser.add_mutually_exclusive_group(required=True)
 
-    group.add_argument('--encrypt', '--e', action='store_true', help='Encrypt the file')
-    group.add_argument('--decrypt', '--d', action='store_true', help='Decrypt the file')
+    group.add_argument('-e', '--encrypt', action='store_true', help='Encrypt the file')
+    group.add_argument('-d', '--decrypt', action='store_true', help='Decrypt the file')
 
-    group.add_argument('--infile', '--in', '--i',type=str, required=True, help='Input file path')
-    group.add_argument('--outfile', '--out', '--o', type=str, required=True, help='Output file path')
+    parser.add_argument('-i', '--infile', type=str, required=True, help='Input file path')
+    parser.add_argument('-o', '--outfile', type=str, required=True, help='Output file path')
 
-    ar gs = parser.parse_args()
+    parser.add_argument('-ks', '--keysize', type=int, default=2048, help='RSA key size (default: 2048)')
+
+    parser.add_argument('-kf', '--keyfile', type=str, default='rsa_keys.txt', help='Path to RSA key file')
+
+    return parser.parse_args()
 
 '''File I/O Helper Functions'''
 
@@ -179,35 +203,38 @@ def unpad_message(padded):
 
 if __name__ == '__main__':
 
-#####################################
-######### add lines for cli parsing + below that
-#####################################
+    args = parse_cli_args()
 
-    e, d, n = generateKeys(2048)
+    e, d, n = generateKeys(args.keysize)
 
-    print(f"Public Key (e, n): ({e}, {n})")
-    print(f"Private Key (d, n): ({d}, {n})")
+    file_data = read_file(args.infile)
 
-    # Message
-    M = "This is a message"
-    print(f"Original Message: {M}")
+    # Encryption
+    if args.encrypt:
 
-    padded = pad_message(M)
-    m_int = int.from_bytes(M.encode(), 'big')
+        e, d, n = generateKeys(args.keysize)
+        save_keys(e, d, n, args.keyfile)
 
-    # Check message size is within bounds
-    if m_int >= n:
-        raise ValueError("Message too large for the key size. Use smaller message or larger key.")
+        m_int = int.from_bytes(file_data, 'big')
+        if m_int >= n:
+            raise ValueError("Message too large for key size")
+        c = encrypt(m_int, e, n)
+        c_bytes = c.to_bytes((c.bit_length() + 7) // 8, 'big')
+        write_file(args.outfile, c_bytes)
+        print(f"Encrypted output written to {args.outfile}")
 
-    # Encrypt the message
-    C = encrypt(m_int, e, n)
-    print(f"Encrypted Message: {C}")
+    # Decryption
+    elif args.decrypt: 
 
-    # Decrypt the message
-    decrypted_int = decrypt(C, d, n)
+        # load keys
+        e, d, n = load_keys(args.keyfile)
 
-    # Convert integer back to string
-    decrypted_bytes = decrypted_int.to_bytes((decrypted_int.bit_length() + 7) // 8, 'big')
-    decrypted_message = decrypted_bytes.decode()
+        # store file contents, decrypts contents into int bytes, then swaps int bytes to original bytes (str, int, etc) in message
+        c_int = int.from_bytes(file_data, 'big')
+        m = decrypt(c_int, d, n)
+        m_bytes = m.to_bytes((m.bit_length() + 7) // 8, 'big')
 
-    print(f"Decrypted Message: {unpad_message(decrypted_message)}")
+        # write decrypted contents to outfile
+        write_file(args.outfile, m_bytes)
+
+        print(f"Decrypted output written to {args.outfile}")
